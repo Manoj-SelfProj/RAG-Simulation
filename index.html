@@ -1,121 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RAG Simulator</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
       margin: 0;
-      padding: 20px;
+      font-family: Inter, system-ui, Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #020617);
+      color: #e2e8f0;
     }
-    h1 { text-align: center; }
-    .container {
-      max-width: 900px;
-      margin: auto;
+    h1 { text-align: center; margin-bottom: 20px; }
+    .container { max-width: 1000px; margin: auto; padding: 20px; }
+    .card {
+      background: #1e293b;
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
     textarea, input {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
-      border-radius: 8px;
+      margin-top: 10px;
+      border-radius: 10px;
       border: none;
+      outline: none;
+      font-size: 14px;
     }
     button {
-      padding: 10px 20px;
-      border-radius: 8px;
+      margin-top: 12px;
+      padding: 10px 16px;
+      border-radius: 10px;
       border: none;
       background: #38bdf8;
-      cursor: pointer;
+      color: black;
       font-weight: bold;
+      cursor: pointer;
     }
-    .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 12px;
-      margin-top: 15px;
-    }
-    .step { margin-top: 10px; }
+    .step { padding: 6px 0; border-bottom: 1px solid #334155; }
+    .highlight { color: #38bdf8; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>RAG Simulator</h1>
+    <h1>RAG Simulator (Step-by-Step)</h1>
 
     <div class="card">
-      <h3>1. Enter Dataset</h3>
-      <textarea id="dataset" rows="4" placeholder="Enter sentences separated by new line"></textarea>
+      <h3>1. Dataset</h3>
+      <textarea id="dataset" rows="5" placeholder="Enter one sentence per line"></textarea>
     </div>
 
     <div class="card">
-      <h3>2. Enter Query</h3>
-      <input id="query" placeholder="Enter your query" />
-      <button onclick="runRAG()">Run RAG</button>
+      <h3>2. Query</h3>
+      <input id="query" placeholder="Ask something..." />
+      <button id="runBtn">Run RAG</button>
     </div>
 
     <div class="card">
-      <h3>3. Embeddings (Simulated)</h3>
+      <h3>3. Embedding + Similarity</h3>
       <div id="embeddings"></div>
     </div>
 
     <div class="card">
-      <h3>4. Retrieved Context</h3>
+      <h3>4. Retrieved Context (Top Match)</h3>
       <div id="retrieved"></div>
     </div>
 
     <div class="card">
-      <h3>5. Final LLM Output</h3>
+      <h3>5. LLM Output</h3>
       <div id="output"></div>
     </div>
   </div>
 
   <script>
-    function simpleEmbedding(text) {
-      const words = text.toLowerCase().split(" ");
-      const map = {};
-      words.forEach(w => map[w] = (map[w] || 0) + 1);
-      return map;
+    function tokenize(text) {
+      return text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(Boolean);
     }
 
-    function similarity(a, b) {
-      let score = 0;
-      for (let key in a) {
-        if (b[key]) score += a[key] * b[key];
-      }
-      return score;
+    function embed(text) {
+      const tokens = tokenize(text);
+      const vec = {};
+      tokens.forEach(t => {
+        vec[t] = (vec[t] || 0) + 1;
+      });
+      return vec;
+    }
+
+    function cosineSim(a, b) {
+      let dot = 0, magA = 0, magB = 0;
+      const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+
+      keys.forEach(k => {
+        const v1 = a[k] || 0;
+        const v2 = b[k] || 0;
+        dot += v1 * v2;
+        magA += v1 * v1;
+        magB += v2 * v2;
+      });
+
+      if (magA === 0 || magB === 0) return 0;
+      return dot / (Math.sqrt(magA) * Math.sqrt(magB));
     }
 
     function runRAG() {
-      const dataset = document.getElementById("dataset").value.split("\n");
-      const query = document.getElementById("query").value;
+      const rawDataset = document.getElementById('dataset').value;
+      const query = document.getElementById('query').value.trim();
 
-      const queryVec = simpleEmbedding(query);
+      if (!rawDataset.trim() || !query) {
+        alert('Please enter dataset and query');
+        return;
+      }
 
-      let embedHTML = "";
-      let bestMatch = "";
+      const dataset = rawDataset
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const queryVec = embed(query);
+
       let bestScore = -1;
+      let bestSentence = '';
+      let html = '';
 
       dataset.forEach(sentence => {
-        const vec = simpleEmbedding(sentence);
-        const score = similarity(queryVec, vec);
+        const vec = embed(sentence);
+        const score = cosineSim(queryVec, vec);
 
-        embedHTML += `<div class="step">${sentence} → Score: ${score}</div>`;
+        html += `<div class="step">${sentence}<br/>Similarity: <span class="highlight">${score.toFixed(3)}</span></div>`;
 
         if (score > bestScore) {
           bestScore = score;
-          bestMatch = sentence;
+          bestSentence = sentence;
         }
       });
 
-      document.getElementById("embeddings").innerHTML = embedHTML;
-      document.getElementById("retrieved").innerHTML = bestMatch || "No match found";
+      document.getElementById('embeddings').innerHTML = html || 'No data';
 
-      const output = `Based on retrieved context: \"${bestMatch}\", the answer to your query \"${query}\" is likely related to it.`;
+      document.getElementById('retrieved').innerHTML = bestSentence
+        ? `<span class="highlight">${bestSentence}</span>`
+        : 'No match found';
 
-      document.getElementById("output").innerHTML = output;
+      const output = bestSentence
+        ? `Using retrieved context: "${bestSentence}", the answer to "${query}" is generated based on this relevant information.`
+        : 'No relevant context found to generate answer.';
+
+      document.getElementById('output').innerHTML = output;
     }
+
+    document.getElementById('runBtn').addEventListener('click', runRAG);
   </script>
 </body>
 </html>
