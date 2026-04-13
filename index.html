@@ -1,156 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RAG Simulator</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, Arial, sans-serif;
-      background: linear-gradient(135deg, #0f172a, #020617);
-      color: #e2e8f0;
-    }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .container { max-width: 1000px; margin: auto; padding: 20px; }
-    .card {
-      background: #1e293b;
-      padding: 16px;
-      border-radius: 14px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-    textarea, input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 10px;
-      border: none;
-      outline: none;
-      font-size: 14px;
-    }
-    button {
-      margin-top: 12px;
-      padding: 10px 16px;
-      border-radius: 10px;
-      border: none;
-      background: #38bdf8;
-      color: black;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .step { padding: 6px 0; border-bottom: 1px solid #334155; }
-    .highlight { color: #38bdf8; font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced RAG Simulator</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Inter, Arial;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+textarea, input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  margin-top: 10px;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #38bdf8;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.box {
+  background: #020617;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.highlight {
+  color: #38bdf8;
+  font-weight: bold;
+}
+
+.pipeline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.stage {
+  flex: 1;
+  background: #020617;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+}
+
+</style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>RAG Simulator (Step-by-Step)</h1>
+<div class="container">
 
-    <div class="card">
-      <h3>1. Dataset</h3>
-      <textarea id="dataset" rows="5" placeholder="Enter one sentence per line"></textarea>
-    </div>
+<h1>Advanced RAG Simulator (Visual + Step-by-Step)</h1>
 
-    <div class="card">
-      <h3>2. Query</h3>
-      <input id="query" placeholder="Ask something..." />
-      <button id="runBtn">Run RAG</button>
-    </div>
+<div class="card">
+<h3>1. Dataset (Knowledge Base)</h3>
+<textarea id="dataset" rows="6" placeholder="Enter paragraphs..."></textarea>
+</div>
 
-    <div class="card">
-      <h3>3. Embedding + Similarity</h3>
-      <div id="embeddings"></div>
-    </div>
+<div class="card">
+<h3>2. Query</h3>
+<input id="query" placeholder="Ask your question..." />
+<button onclick="runRAG()">Run RAG Pipeline</button>
+</div>
 
-    <div class="card">
-      <h3>4. Retrieved Context (Top Match)</h3>
-      <div id="retrieved"></div>
-    </div>
+<div class="pipeline">
+<div class="stage">Chunking</div>
+<div class="stage">Embedding</div>
+<div class="stage">Vector Search</div>
+<div class="stage">Top-K Retrieval</div>
+<div class="stage">Prompt Injection</div>
+<div class="stage">LLM Output</div>
+</div>
 
-    <div class="card">
-      <h3>5. LLM Output</h3>
-      <div id="output"></div>
-    </div>
-  </div>
+<div class="grid">
 
-  <script>
-    function tokenize(text) {
-      return text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(Boolean);
-    }
+<div class="card">
+<h3>3. Chunked Data</h3>
+<div id="chunks"></div>
+</div>
 
-    function embed(text) {
-      const tokens = tokenize(text);
-      const vec = {};
-      tokens.forEach(t => {
-        vec[t] = (vec[t] || 0) + 1;
-      });
-      return vec;
-    }
+<div class="card">
+<h3>4. Embeddings</h3>
+<div id="embeddings"></div>
+</div>
 
-    function cosineSim(a, b) {
-      let dot = 0, magA = 0, magB = 0;
-      const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+<div class="card">
+<h3>5. Similarity Scores</h3>
+<div id="scores"></div>
+</div>
 
-      keys.forEach(k => {
-        const v1 = a[k] || 0;
-        const v2 = b[k] || 0;
-        dot += v1 * v2;
-        magA += v1 * v1;
-        magB += v2 * v2;
-      });
+<div class="card">
+<h3>6. Top-K Retrieved Context</h3>
+<div id="retrieved"></div>
+</div>
 
-      if (magA === 0 || magB === 0) return 0;
-      return dot / (Math.sqrt(magA) * Math.sqrt(magB));
-    }
+<div class="card">
+<h3>7. Final Prompt (Context Injection)</h3>
+<div id="prompt"></div>
+</div>
 
-    function runRAG() {
-      const rawDataset = document.getElementById('dataset').value;
-      const query = document.getElementById('query').value.trim();
+<div class="card">
+<h3>8. Simulated LLM Output</h3>
+<div id="output"></div>
+</div>
 
-      if (!rawDataset.trim() || !query) {
-        alert('Please enter dataset and query');
-        return;
-      }
+</div>
+</div>
 
-      const dataset = rawDataset
-        .split('\n')
-        .map(s => s.trim())
-        .filter(Boolean);
+<script>
 
-      const queryVec = embed(query);
+function tokenize(text) {
+  return text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(Boolean);
+}
 
-      let bestScore = -1;
-      let bestSentence = '';
-      let html = '';
+function embed(text) {
+  const tokens = tokenize(text);
+  const vec = {};
+  tokens.forEach(t => vec[t] = (vec[t] || 0) + 1);
+  return vec;
+}
 
-      dataset.forEach(sentence => {
-        const vec = embed(sentence);
-        const score = cosineSim(queryVec, vec);
+function cosineSim(a, b) {
+  let dot = 0, magA = 0, magB = 0;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
 
-        html += `<div class="step">${sentence}<br/>Similarity: <span class="highlight">${score.toFixed(3)}</span></div>`;
+  keys.forEach(k => {
+    const v1 = a[k] || 0;
+    const v2 = b[k] || 0;
+    dot += v1 * v2;
+    magA += v1 * v1;
+    magB += v2 * v2;
+  });
 
-        if (score > bestScore) {
-          bestScore = score;
-          bestSentence = sentence;
-        }
-      });
+  if (magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
 
-      document.getElementById('embeddings').innerHTML = html || 'No data';
+function chunkText(text) {
+  return text
+    .split('.')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
 
-      document.getElementById('retrieved').innerHTML = bestSentence
-        ? `<span class="highlight">${bestSentence}</span>`
-        : 'No match found';
+function runRAG() {
+  const dataset = document.getElementById('dataset').value;
+  const query = document.getElementById('query').value;
 
-      const output = bestSentence
-        ? `Using retrieved context: "${bestSentence}", the answer to "${query}" is generated based on this relevant information.`
-        : 'No relevant context found to generate answer.';
+  if (!dataset || !query) {
+    alert('Enter dataset and query');
+    return;
+  }
 
-      document.getElementById('output').innerHTML = output;
-    }
+  const chunks = chunkText(dataset);
+  document.getElementById('chunks').innerHTML = chunks.map(c => `<div class='box'>${c}</div>`).join('');
 
-    document.getElementById('runBtn').addEventListener('click', runRAG);
-  </script>
+  const queryVec = embed(query);
+
+  let embedHTML = '';
+  let scoresHTML = '';
+  let scored = [];
+
+  chunks.forEach(chunk => {
+    const vec = embed(chunk);
+    embedHTML += `<div class='box'>${JSON.stringify(vec)}</div>`;
+
+    const score = cosineSim(queryVec, vec);
+    scoresHTML += `<div class='box'>${chunk}<br>Score: <span class='highlight'>${score.toFixed(3)}</span></div>`;
+
+    scored.push({ chunk, score });
+  });
+
+  document.getElementById('embeddings').innerHTML = embedHTML;
+  document.getElementById('scores').innerHTML = scoresHTML;
+
+  scored.sort((a,b) => b.score - a.score);
+  const topK = scored.slice(0, 3);
+
+  document.getElementById('retrieved').innerHTML = topK
+    .map(item => `<div class='box highlight'>${item.chunk}</div>`)
+    .join('');
+
+  const context = topK.map(i => i.chunk).join(' ');
+
+  const finalPrompt = `Context: ${context}\nQuestion: ${query}`;
+  document.getElementById('prompt').innerHTML = `<div class='box'>${finalPrompt}</div>`;
+
+  const output = `Answer based on retrieved context: ${context}`;
+  document.getElementById('output').innerHTML = `<div class='box highlight'>${output}</div>`;
+}
+
+</script>
+
 </body>
 </html>
