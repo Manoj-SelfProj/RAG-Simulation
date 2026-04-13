@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RAG Simulator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      background: #38bdf8;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .card {
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 12px;
+      margin-top: 15px;
+    }
+    .step { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>RAG Simulator</h1>
+
+    <div class="card">
+      <h3>1. Enter Dataset</h3>
+      <textarea id="dataset" rows="4" placeholder="Enter sentences separated by new line"></textarea>
+    </div>
+
+    <div class="card">
+      <h3>2. Enter Query</h3>
+      <input id="query" placeholder="Enter your query" />
+      <button onclick="runRAG()">Run RAG</button>
+    </div>
+
+    <div class="card">
+      <h3>3. Embeddings (Simulated)</h3>
+      <div id="embeddings"></div>
+    </div>
+
+    <div class="card">
+      <h3>4. Retrieved Context</h3>
+      <div id="retrieved"></div>
+    </div>
+
+    <div class="card">
+      <h3>5. Final LLM Output</h3>
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <script>
+    function simpleEmbedding(text) {
+      const words = text.toLowerCase().split(" ");
+      const map = {};
+      words.forEach(w => map[w] = (map[w] || 0) + 1);
+      return map;
+    }
+
+    function similarity(a, b) {
+      let score = 0;
+      for (let key in a) {
+        if (b[key]) score += a[key] * b[key];
+      }
+      return score;
+    }
+
+    function runRAG() {
+      const dataset = document.getElementById("dataset").value.split("\n");
+      const query = document.getElementById("query").value;
+
+      const queryVec = simpleEmbedding(query);
+
+      let embedHTML = "";
+      let bestMatch = "";
+      let bestScore = -1;
+
+      dataset.forEach(sentence => {
+        const vec = simpleEmbedding(sentence);
+        const score = similarity(queryVec, vec);
+
+        embedHTML += `<div class="step">${sentence} → Score: ${score}</div>`;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = sentence;
+        }
+      });
+
+      document.getElementById("embeddings").innerHTML = embedHTML;
+      document.getElementById("retrieved").innerHTML = bestMatch || "No match found";
+
+      const output = `Based on retrieved context: \"${bestMatch}\", the answer to your query \"${query}\" is likely related to it.`;
+
+      document.getElementById("output").innerHTML = output;
+    }
+  </script>
+</body>
+</html>
